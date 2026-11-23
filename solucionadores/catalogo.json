@@ -1,0 +1,18 @@
+[
+  {
+    "id": "sol-vigas-simple",
+    "titulo": "Solucionador: Viga Simple (Esfuerzo y Flecha)",
+    "materia": "Mecánica de Materiales",
+    "tipo": "Herramienta Web Interactiva",
+    "descripcion": "Calcula reacciones, momento máximo, esfuerzo normal por flexión y deflexión máxima con diagrama SVG en vivo.",
+    "estado": "Integrado en web"
+  },
+  {
+    "id": "mecmat-2d",
+    "titulo": "MECMAT-2D (Armaduras, Vigas y Marcos)",
+    "materia": "Análisis Estructural / Mecánica",
+    "tipo": "App de Escritorio Python (PyQt6 + SymPy)",
+    "descripcion": "Tu suite simbólica y gráfica con longitudes proporcionales, deformación axial/Poisson y memoria analítica paso a paso.",
+    "estado": "Listo para vincular .exe / repo"
+  }
+]

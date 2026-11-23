@@ -1,0 +1,42 @@
+[
+  {
+    "id": "vigas-flexion-area-momentos",
+    "titulo": "Flexión en Vigas: Teoremas de Área de Momentos",
+    "materia": "Mecánica de Materiales",
+    "tema": "Deflexión y Pendiente en Vigas",
+    "metodo": "Área de Momentos (Geométrico)",
+    "fuente": "Método Rápido de Clase / Mohr",
+    "autor": "O — Apuntes ITO",
+    "fecha": "2026-11-23",
+    "comparar_con": "vigas-flexion-doble-integracion",
+    "tags": [
+      "vigas",
+      "Mohr",
+      "diagrama M/EI",
+      "atajo",
+      "deflexión"
+    ],
+    "resumen": "Cálculo directo de giros y flechas puntuales usando áreas y centroides del diagrama M/EI sin resolver constantes de integración.",
+    "archivo": "contenido\\mecanica-materiales\\flexion-area-momentos.md"
+  },
+  {
+    "id": "vigas-flexion-doble-integracion",
+    "titulo": "Flexión en Vigas: Método de Doble Integración",
+    "materia": "Mecánica de Materiales",
+    "tema": "Deflexión y Pendiente en Vigas",
+    "metodo": "Doble Integración (Analítico)",
+    "fuente": "Enfoque Clásico / Libro de Texto",
+    "autor": "O — Apuntes ITO",
+    "fecha": "2026-11-23",
+    "comparar_con": "vigas-flexion-area-momentos",
+    "tags": [
+      "vigas",
+      "elástica",
+      "EI",
+      "condiciones de frontera",
+      "deflexión"
+    ],
+    "resumen": "Obtención de la ecuación exacta de la curva elástica v(x) integrando dos veces la relación momento-curvatura.",
+    "archivo": "contenido\\mecanica-materiales\\flexion-doble-integracion.md"
+  }
+]
