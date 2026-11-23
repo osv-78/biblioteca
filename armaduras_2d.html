@@ -1,0 +1,2389 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏗️ Análisis de Armaduras 2D — Solucionador Web</title>
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        :root {
+            --bg-main: #181a1f;
+            --bg-panel: #21252b;
+            --bg-card: #282c34;
+            --bg-input: #1b1e24;
+            --border-color: #383e4a;
+            --text-main: #eceff4;
+            --text-muted: #9aa5b4;
+            --accent-blue: #2980b9;
+            --accent-blue-hover: #3498db;
+            --accent-green: #27ae60;
+            --accent-green-hover: #2ecc71;
+            --accent-orange: #e67e22;
+            --accent-purple: #8e44ad;
+            --accent-red: #c0392b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Header / Top Bar */
+        header {
+            background-color: var(--bg-panel);
+            border-bottom: 1px solid var(--border-color);
+            padding: 8px 14px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            z-index: 10;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: #61afef;
+        }
+
+        .top-actions {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px;
+        }
+
+        button, select, input {
+            font-family: inherit;
+            font-size: 0.85rem;
+            border-radius: 5px;
+            border: 1px solid var(--border-color);
+            outline: none;
+        }
+
+        button {
+            cursor: pointer;
+            font-weight: 600;
+            padding: 6px 11px;
+            color: #fff;
+            background-color: #34495e;
+            transition: filter 0.15s, transform 0.05s;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        button:hover { filter: brightness(1.12); }
+        button:active { transform: translateY(1px); }
+
+        .btn-primary { background-color: var(--accent-blue); border-color: #2471a3; }
+        .btn-success { background-color: var(--accent-green); border-color: #1e8449; }
+        .btn-warning { background-color: var(--accent-orange); border-color: #ca6f1e; }
+        .btn-purple  { background-color: var(--accent-purple); border-color: #71368a; }
+        .btn-danger  { background-color: var(--accent-red); border-color: #922b21; }
+        .btn-sm      { padding: 4px 8px; font-size: 0.8rem; }
+
+        select, input[type="number"], input[type="text"] {
+            background-color: var(--bg-input);
+            color: var(--text-main);
+            padding: 5px 8px;
+        }
+
+        select:focus, input:focus {
+            border-color: #61afef;
+        }
+
+        /* Main Workspace Layout */
+        .workspace {
+            display: grid;
+            grid-template-columns: 440px 1fr 110px;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        /* Left Panel (Tables, Generator, Results) */
+        .panel-left {
+            background-color: var(--bg-panel);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .unit-bar {
+            padding: 8px 10px;
+            background-color: var(--bg-card);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .unit-bar label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        .unit-bar select {
+            flex: 1;
+            width: 100%;
+        }
+
+        /* Tabs */
+        .tab-bar {
+            display: flex;
+            background-color: #1b1e24;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .tab-btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            border-radius: 0;
+            padding: 8px 4px;
+            color: var(--text-muted);
+            font-size: 0.82rem;
+            justify-content: center;
+        }
+
+        .tab-btn.active {
+            color: #61afef;
+            border-bottom-color: #61afef;
+            background-color: var(--bg-panel);
+        }
+
+        .tab-content {
+            display: none;
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .tab-content.active {
+            display: flex;
+        }
+
+        /* Action Bar at bottom of Left Panel */
+        .calc-bar {
+            padding: 8px 10px;
+            background-color: var(--bg-card);
+            border-top: 1px solid var(--border-color);
+            display: grid;
+            grid-template-columns: 1fr 1.2fr 1.2fr;
+            gap: 6px;
+        }
+
+        /* Form Groups & Tables */
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 10px;
+        }
+
+        .card h4 {
+            font-size: 0.86rem;
+            color: #61afef;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .form-field {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .form-field label {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+            max-height: 220px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            margin-bottom: 6px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+
+        th {
+            background-color: #1b1e24;
+            color: #abb2bf;
+            font-weight: 600;
+            text-align: center;
+            padding: 5px 4px;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        td {
+            padding: 3px;
+            border-bottom: 1px solid #2f343f;
+            text-align: center;
+        }
+
+        td input[type="number"] {
+            width: 100%;
+            min-width: 46px;
+            padding: 3px 4px;
+            text-align: center;
+            border: 1px solid transparent;
+            background: #1b1e24;
+        }
+
+        td input[type="number"]:focus {
+            border-color: #61afef;
+        }
+
+        td input[type="checkbox"] {
+            width: 15px;
+            height: 15px;
+            accent-color: var(--accent-blue);
+            cursor: pointer;
+        }
+
+        .btn-del-row {
+            background: transparent;
+            color: #e06c75;
+            border: none;
+            padding: 2px 5px;
+            font-size: 0.85rem;
+        }
+
+        /* Center Canvas Area */
+        .panel-center {
+            display: flex;
+            flex-direction: column;
+            background-color: #14161a;
+            position: relative;
+            min-width: 0;
+            min-height: 0;
+        }
+
+        .canvas-toolbar {
+            background-color: var(--bg-card);
+            border-bottom: 1px solid var(--border-color);
+            padding: 6px 12px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            font-size: 0.82rem;
+        }
+
+        .scale-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+            min-width: 220px;
+        }
+
+        .scale-control input[type="range"] {
+            flex: 1;
+            accent-color: #61afef;
+        }
+
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            cursor: crosshair;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .canvas-hud {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(24, 26, 31, 0.88);
+            border: 1px solid var(--border-color);
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.78rem;
+            font-family: Consolas, monospace;
+            color: #abb2bf;
+            pointer-events: none;
+        }
+
+        .legend-hud {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(24, 26, 31, 0.88);
+            border: 1px solid var(--border-color);
+            padding: 6px 10px;
+            border-radius: 5px;
+            font-size: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            pointer-events: none;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .swatch {
+            width: 14px;
+            height: 3px;
+            display: inline-block;
+        }
+
+        /* Right CAD Toolbar */
+        .panel-cad {
+            background-color: var(--bg-panel);
+            border-left: 1px solid var(--border-color);
+            padding: 8px 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            overflow-y: auto;
+        }
+
+        .panel-cad .cad-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-align: center;
+            color: var(--text-muted);
+            margin-bottom: 2px;
+        }
+
+        .cad-tool {
+            width: 100%;
+            justify-content: center;
+            flex-direction: column;
+            padding: 7px 4px;
+            font-size: 0.76rem;
+            background-color: #2c313c;
+            border: 1px solid var(--border-color);
+            gap: 3px;
+        }
+
+        .cad-tool.active {
+            background-color: var(--accent-blue);
+            border-color: #61afef;
+            box-shadow: 0 0 0 1px #61afef;
+        }
+
+        /* Report & MathJax Panels */
+        pre.report-box {
+            background-color: #16181d;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            padding: 10px;
+            font-family: 'Cascadia Code', Consolas, monospace;
+            font-size: 0.8rem;
+            line-height: 1.45;
+            color: #e5e9f0;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+
+        .math-output {
+            background-color: #1b1e24;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 12px;
+            font-size: 0.88rem;
+            line-height: 1.5;
+            overflow-x: auto;
+        }
+
+        .math-output h3 {
+            color: #61afef;
+            font-size: 0.95rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 4px;
+            margin: 12px 0 8px 0;
+        }
+
+        .math-output h3:first-child { margin-top: 0; }
+
+        .nodo-block {
+            background-color: #252a34;
+            border-left: 3px solid #2980b9;
+            padding: 8px 10px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+
+        /* Modal */
+        .modal-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.68);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        .modal-backdrop.open {
+            display: flex;
+        }
+
+        .modal {
+            background-color: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            width: 100%;
+            max-width: 480px;
+            padding: 16px;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal h3 {
+            color: #c678dd;
+            margin-bottom: 12px;
+            font-size: 1.05rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 6px;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 14px;
+        }
+
+        /* Responsive Mobile / Tablet Layout */
+        @media (max-width: 980px) {
+            body {
+                height: auto;
+                overflow-y: auto;
+            }
+            .workspace {
+                display: flex;
+                flex-direction: column;
+                overflow: visible;
+            }
+            .panel-center {
+                order: 1;
+                height: 52vh;
+                min-height: 340px;
+            }
+            .panel-cad {
+                order: 2;
+                flex-direction: row;
+                flex-wrap: wrap;
+                border-left: none;
+                border-top: 1px solid var(--border-color);
+                border-bottom: 1px solid var(--border-color);
+            }
+            .panel-cad .cad-title {
+                width: 100%;
+                text-align: left;
+            }
+            .cad-tool {
+                width: auto;
+                flex: 1 1 75px;
+            }
+            .panel-left {
+                order: 3;
+                border-right: none;
+            }
+            .table-wrap {
+                max-height: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="brand">🏗️ Análisis de Armaduras 2D <span style="font-size:0.75rem; color:#9aa5b4; font-weight:400;">(Matriz de Rigidez + Cables + Poisson)</span></div>
+    <div class="top-actions">
+        <button onclick="document.getElementById('file-json-input').click()">📂 Abrir JSON</button>
+        <input type="file" id="file-json-input" accept=".json" style="display:none" onchange="abrirModeloJSON(event)">
+        <button onclick="guardarModeloJSON()">💾 Guardar JSON</button>
+        <button class="btn-danger" onclick="limpiarModelo()">🧹 Limpiar</button>
+    </div>
+</header>
+
+<div class="workspace">
+    <!-- PANEL IZQUIERDO -->
+    <aside class="panel-left">
+        <div class="unit-bar">
+            <label for="combo-unidades">Unidades:</label>
+            <select id="combo-unidades" onchange="cambiarSistemaUnidades()"></select>
+        </div>
+
+        <div class="tab-bar">
+            <button class="tab-btn active" onclick="activarTab('tab-tablas', this)">📋 Tablas</button>
+            <button class="tab-btn" onclick="activarTab('tab-cargas', this)">⚡ Cargas</button>
+            <button class="tab-btn" onclick="activarTab('tab-config', this)">🛠️ Plantillas</button>
+            <button class="tab-btn" onclick="activarTab('tab-reporte', this)">📊 Reporte</button>
+            <button class="tab-btn" onclick="activarTab('tab-teoria', this)">🎓 Teoría</button>
+        </div>
+
+        <!-- TAB 1: TABLAS DE NODOS Y BARRAS -->
+        <div id="tab-tablas" class="tab-content active">
+            <div class="card">
+                <h4>
+                    <span>Nodos y Apoyos</span>
+                    <button class="btn-primary btn-sm" onclick="agregarNodo()">➕ Nodo</button>
+                </h4>
+                <div class="table-wrap">
+                    <table id="tabla-nodos">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th id="th-nx">X (m)</th>
+                                <th id="th-ny">Y (m)</th>
+                                <th>Fijo X</th>
+                                <th>Fijo Y</th>
+                                <th>Áng (°)</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card">
+                <h4>
+                    <span>Barras y Cables</span>
+                    <button class="btn-primary btn-sm" onclick="agregarElemento()">➕ Barra</button>
+                </h4>
+                <div class="table-wrap">
+                    <table id="tabla-elementos">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>N I</th>
+                                <th>N J</th>
+                                <th id="th-ee">E (GPa)</th>
+                                <th id="th-ea">A (cm²)</th>
+                                <th>Cable</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: CARGAS -->
+        <div id="tab-cargas" class="tab-content">
+            <div class="card">
+                <h4>
+                    <span>🎯 Cargas Puntuales Nodales</span>
+                    <button class="btn-primary btn-sm" onclick="agregarCargaNodal()">➕ Nodal</button>
+                </h4>
+                <div class="table-wrap">
+                    <table id="tabla-cn">
+                        <thead>
+                            <tr>
+                                <th>Nodo ID</th>
+                                <th id="th-fx">Fx (kN)</th>
+                                <th id="th-fy">Fy (kN)</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card">
+                <h4>
+                    <span>〰 Cargas Distribuidas en Barras</span>
+                    <button class="btn-primary btn-sm" onclick="agregarCargaDist()">➕ Distribuida</button>
+                </h4>
+                <div class="table-wrap">
+                    <table id="tabla-cd">
+                        <thead>
+                            <tr>
+                                <th>Barra ID</th>
+                                <th id="th-wx">wx (kN/m)</th>
+                                <th id="th-wy">wy (kN/m)</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: GENERADOR DE PLANTILLAS -->
+        <div id="tab-config" class="tab-content">
+            <div class="card">
+                <h4>Generador Paramétrico de Armaduras</h4>
+                <div class="form-field" style="margin-bottom:8px;">
+                    <label>Tipo de Armadura</label>
+                    <select id="combo-plantilla">
+                        <option value="Armadura Warren">Armadura Warren</option>
+                        <option value="Armadura Pratt">Armadura Pratt</option>
+                        <option value="Armadura Howe">Armadura Howe</option>
+                        <option value="Armadura Tipo K">Armadura Tipo K</option>
+                        <option value="Ménsula en Voladizo">Ménsula en Voladizo</option>
+                    </select>
+                </div>
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label>Longitud Total (L)</label>
+                        <input type="number" id="gen-L" value="12.0" step="0.5">
+                    </div>
+                    <div class="form-field">
+                        <label>Altura Máxima (H)</label>
+                        <input type="number" id="gen-H" value="3.0" step="0.5">
+                    </div>
+                    <div class="form-field">
+                        <label>Número de Paneles</label>
+                        <input type="number" id="gen-pan" value="4" min="1" step="1">
+                    </div>
+                </div>
+                <button class="btn-primary" style="width:100%; justify-content:center;" onclick="generarPlantilla()">🚀 Generar Plantilla</button>
+            </div>
+        </div>
+
+        <!-- TAB 4: REPORTE NUMÉRICO -->
+        <div id="tab-reporte" class="tab-content">
+            <div class="card" style="flex:1; display:flex; flex-direction:column;">
+                <h4>📊 Reporte de Esfuerzos, Reacciones y Desplazamientos</h4>
+                <pre id="txt-reporte" class="report-box" style="flex:1;">Presiona "⚙️ CALCULAR" para obtener reacciones, fuerzas internas y desplazamientos.</pre>
+            </div>
+        </div>
+
+        <!-- TAB 5: TEORÍA Y EQUILIBRIO LATEX -->
+        <div id="tab-teoria" class="tab-content">
+            <div id="txt-didactico" class="math-output">
+                <p style="color:var(--text-muted);">Presiona <strong>⚙️ CALCULAR</strong> para generar el planteamiento algebraico de equilibrio global ($\sum F_x, \sum F_y, \sum M$) y el desglose del Método de Nodos en LaTeX.</p>
+            </div>
+        </div>
+
+        <div class="calc-bar">
+            <button class="btn-warning" style="justify-content:center;" onclick="dibujarPlano()">✏️ DIBUJAR</button>
+            <button class="btn-success" style="justify-content:center;" onclick="ejecutarAnalisis()">⚙️ CALCULAR</button>
+            <button class="btn-purple" style="justify-content:center;" onclick="abrirModalPoisson()">📐 Δ Volumen</button>
+        </div>
+    </aside>
+
+    <!-- LIENZO CENTRAL -->
+    <main class="panel-center">
+        <div class="canvas-toolbar">
+            <div class="scale-control">
+                <span><strong>🔍 Escala Deformada:</strong></span>
+                <input type="range" id="slider-escala" min="1" max="200" value="10" oninput="onCambioEscala()">
+                <span id="lbl-escala" style="min-width:38px; font-weight:700; color:#61afef;">1.0x</span>
+            </div>
+            <div style="display:flex; gap:6px;">
+                <button class="btn-sm" onclick="ajustarVista()">🎯 Centrar Vista</button>
+            </div>
+        </div>
+
+        <div class="canvas-container" id="canvas-container">
+            <canvas id="lienzo"></canvas>
+            <div class="legend-hud">
+                <div class="legend-item"><span class="swatch" style="background:#3b82f6;"></span> Tensión (+)</div>
+                <div class="legend-item"><span class="swatch" style="background:#ef4444;"></span> Compresión (-)</div>
+                <div class="legend-item"><span class="swatch" style="background:#f59e0b;"></span> Fuerza Cero</div>
+                <div class="legend-item"><span class="swatch" style="border-top:2px dashed #95a5a6;"></span> Cable aflambado</div>
+            </div>
+            <div class="canvas-hud" id="hud-coords">X: 0.00 | Y: 0.00 | Herramienta: Navegar/Mover</div>
+        </div>
+    </main>
+
+    <!-- BARRA DE HERRAMIENTAS CAD DERECHA -->
+    <aside class="panel-cad">
+        <div class="cad-title">🧰 CAD</div>
+        <button class="btn-purple cad-tool" onclick="document.getElementById('file-img-input').click()">🖼️<span>Foto</span></button>
+        <input type="file" id="file-img-input" accept="image/*" style="display:none" onchange="cargarImagenFondo(event)">
+        <button class="cad-tool active" data-tool="pan" onclick="seleccionarHerramienta('pan', this)">✋<span>Mover</span></button>
+        <button class="cad-tool" data-tool="nodo" onclick="seleccionarHerramienta('nodo', this)">📍<span>Nodo</span></button>
+        <button class="cad-tool" data-tool="barra" onclick="seleccionarHerramienta('barra', this)">🔗<span>Barra</span></button>
+        <button class="cad-tool" data-tool="cable" onclick="seleccionarHerramienta('cable', this)">〰<span>Cable</span></button>
+        <button class="cad-tool" data-tool="fijo" onclick="seleccionarHerramienta('fijo', this)">▲<span>Fijo</span></button>
+        <button class="cad-tool" data-tool="movil" onclick="seleccionarHerramienta('movil', this)">⚪<span>Móvil</span></button>
+        <button class="cad-tool" data-tool="carga" onclick="seleccionarHerramienta('carga', this)">⚡<span>Carga</span></button>
+    </aside>
+</div>
+
+<!-- MODAL POISSON (CAMBIO DE VOLUMEN 3D) -->
+<div class="modal-backdrop" id="modal-poisson">
+    <div class="modal">
+        <h3>📐 Análisis Tridimensional de Poisson (ΔV)</h3>
+        <div class="form-field" style="margin-bottom:8px;">
+            <label>Seleccionar Barra Activa:</label>
+            <select id="poisson-barra" onchange="actualizarInfoBarraPoisson()"></select>
+        </div>
+        <div id="poisson-info-actual" style="font-size:0.8rem; color:#61afef; font-weight:600; margin-bottom:10px;"></div>
+        <div class="form-grid">
+            <div class="form-field">
+                <label>Coef. de Poisson (ν):</label>
+                <input type="number" id="poisson-nu" value="0.3" step="0.01" min="0" max="0.5">
+            </div>
+            <div class="form-field">
+                <label id="lbl-poisson-E">Nuevo Módulo E [Opcional]:</label>
+                <input type="number" id="poisson-E" placeholder="Mantener actual" step="any">
+            </div>
+            <div class="form-field" style="grid-column: span 2;">
+                <label id="lbl-poisson-D">Nuevo Diámetro circular [Opcional]:</label>
+                <input type="number" id="poisson-D" placeholder="Usar área transversal actual" step="any">
+            </div>
+        </div>
+        <div id="poisson-resultado" style="display:none; margin-top:10px;">
+            <pre id="poisson-texto" class="report-box"></pre>
+        </div>
+        <div class="modal-actions">
+            <button onclick="cerrarModalPoisson()">Cerrar</button>
+            <button class="btn-purple" onclick="calcularCambioVolumen()">Calcular ΔV</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// =========================================================================
+// 1. SISTEMAS DE UNIDADES Y ESTADO GLOBAL
+// =========================================================================
+const SISTEMAS_UNIDADES = {
+    "Métrico Civil (kN, m, cm², GPa)": {
+        L: "m", F: "kN", A: "cm²", E: "GPa", U_out: "mm", D_in: "cm",
+        L_mult: 1.0, F_mult: 1000.0, A_mult: 1e-4, E_mult: 1e9, U_mult: 1000.0, D_mult: 0.01
+    },
+    "Métrico Estándar (N, m, m², Pa)": {
+        L: "m", F: "N", A: "m²", E: "Pa", U_out: "m", D_in: "m",
+        L_mult: 1.0, F_mult: 1.0, A_mult: 1.0, E_mult: 1.0, U_mult: 1.0, D_mult: 1.0
+    },
+    "Métrico Industrial (kgf, m, cm², kgf/cm²)": {
+        L: "m", F: "kgf", A: "cm²", E: "kgf/cm²", U_out: "mm", D_in: "cm",
+        L_mult: 1.0, F_mult: 9.80665, A_mult: 1e-4, E_mult: 98066.5, U_mult: 1000.0, D_mult: 0.01
+    },
+    "Imperial Pies (lbf, ft, in², psi)": {
+        L: "ft", F: "lbf", A: "in²", E: "psi", U_out: "in", D_in: "in",
+        L_mult: 0.3048, F_mult: 4.4482216, A_mult: 0.00064516, E_mult: 6894.757, U_mult: 39.370079, D_mult: 0.0254
+    },
+    "Imperial Pulgadas (lbf, in, in², psi)": {
+        L: "in", F: "lbf", A: "in²", E: "psi", U_out: "in", D_in: "in",
+        L_mult: 0.0254, F_mult: 4.4482216, A_mult: 0.00064516, E_mult: 6894.757, U_mult: 39.370079, D_mult: 0.0254
+    }
+};
+
+const STORAGE_KEY = "armaduras2d_ultimo_modelo_v1";
+
+let nodosData = [
+    [0, 0.0, 0.0, true, true, 0.0],
+    [1, 6.0, 3.0, false, false, 0.0],
+    [2, 12.0, 0.0, false, true, 0.0]
+];
+
+let elementosData = [
+    [0, 0, 1, 200.0, 10.0, false],
+    [1, 1, 2, 200.0, 10.0, false],
+    [2, 0, 2, 200.0, 10.0, true]
+];
+
+let cargasNodalesData = [
+    [1, 0.0, -50.0]
+];
+
+let cargasDistData = [];
+
+let ultimoResultado = null; // { U, R, estructura, u }
+let herramientaActiva = "pan";
+let nodoSelBarra = null;
+
+// Estado de cámara y fondo CAD
+let cam = { offsetX: 80, offsetY: 360, scale: 45 };
+let isDragging = false;
+let dragStart = { x: 0, y: 0 };
+let imgFondo = null;
+let imgExtent = null; // [0, w, 0, h]
+
+// =========================================================================
+// 2. INICIALIZACIÓN Y PERSISTENCIA
+// =========================================================================
+window.addEventListener("DOMContentLoaded", () => {
+    const comboUni = document.getElementById("combo-unidades");
+    Object.keys(SISTEMAS_UNIDADES).forEach(k => {
+        const opt = document.createElement("option");
+        opt.value = k;
+        opt.textContent = k;
+        comboUni.appendChild(opt);
+    });
+
+    cargarMemoriaLocal();
+    actualizarEncabezadosUnidades();
+    renderizarTablas();
+
+    const canvas = document.getElementById("lienzo");
+    const container = document.getElementById("canvas-container");
+
+    const resizeCanvas = () => {
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = container.clientWidth * dpr;
+        canvas.height = container.clientHeight * dpr;
+        const ctx = canvas.getContext("2d");
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        dibujarPlano();
+    };
+
+    window.addEventListener("resize", resizeCanvas);
+    configurarEventosCanvas(canvas);
+    resizeCanvas();
+    ajustarVista();
+});
+
+function cargarMemoriaLocal() {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        if (Array.isArray(data.nodos) && data.nodos.length > 0) {
+            nodosData = data.nodos.map(n => n.length === 5 ? [...n, 0.0] : n);
+        }
+        if (Array.isArray(data.elementos)) elementosData = data.elementos;
+        if (Array.isArray(data.cargas_nodales)) cargasNodalesData = data.cargas_nodales;
+        if (Array.isArray(data.cargas_dist)) cargasDistData = data.cargas_dist;
+    } catch (e) {
+        console.warn("No se pudo leer memoria local:", e);
+    }
+}
+
+function guardarMemoriaLocal() {
+    try {
+        const data = {
+            nodos: nodosData,
+            elementos: elementosData,
+            cargas_nodales: cargasNodalesData,
+            cargas_dist: cargasDistData
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch (e) {}
+}
+
+function guardarModeloJSON() {
+    sincronizarDesdeTablas();
+    const data = {
+        nodos: nodosData,
+        elementos: elementosData,
+        cargas_nodales: cargasNodalesData,
+        cargas_dist: cargasDistData
+    };
+    const blob = new Blob([JSON.stringify(data, null, 4)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "modelo_armadura_2d.json";
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function abrirModeloJSON(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const data = JSON.parse(e.target.result);
+            nodosData = (data.nodos || []).map(n => n.length === 5 ? [...n, 0.0] : n);
+            elementosData = data.elementos || [];
+            cargasNodalesData = data.cargas_nodales || [];
+            cargasDistData = data.cargas_dist || [];
+            ultimoResultado = null;
+            renderizarTablas();
+            guardarMemoriaLocal();
+            ajustarVista();
+            document.getElementById("txt-reporte").textContent = "Modelo JSON cargado. Presiona ⚙️ CALCULAR.";
+        } catch (err) {
+            alert("Error al leer el archivo JSON: " + err.message);
+        }
+    };
+    reader.readAsText(file);
+    event.target.value = "";
+}
+
+function limpiarModelo() {
+    if (!confirm("¿Borrar toda la estructura actual?")) return;
+    nodosData = [[0, 0.0, 0.0, true, true, 0.0]];
+    elementosData = [];
+    cargasNodalesData = [];
+    cargasDistData = [];
+    imgFondo = null;
+    imgExtent = null;
+    ultimoResultado = null;
+    renderizarTablas();
+    guardarMemoriaLocal();
+    ajustarVista();
+    document.getElementById("txt-reporte").textContent = "";
+    document.getElementById("txt-didactico").innerHTML = "";
+}
+
+// =========================================================================
+// 3. GESTIÓN DE PESTAÑAS Y TABLAS DINÁMICAS
+// =========================================================================
+function activarTab(tabId, btn) {
+    document.querySelectorAll(".tab-content").forEach(el => el.classList.remove("active"));
+    document.querySelectorAll(".tab-btn").forEach(el => el.classList.remove("active"));
+    document.getElementById(tabId).classList.add("active");
+    btn.classList.add("active");
+}
+
+function getUnidadActual() {
+    const k = document.getElementById("combo-unidades").value;
+    return SISTEMAS_UNIDADES[k];
+}
+
+function actualizarEncabezadosUnidades() {
+    const u = getUnidadActual();
+    document.getElementById("th-nx").textContent = `X (${u.L})`;
+    document.getElementById("th-ny").textContent = `Y (${u.L})`;
+    document.getElementById("th-ee").textContent = `E (${u.E})`;
+    document.getElementById("th-ea").textContent = `A (${u.A})`;
+    document.getElementById("th-fx").textContent = `Fx (${u.F})`;
+    document.getElementById("th-fy").textContent = `Fy (${u.F})`;
+    document.getElementById("th-wx").textContent = `wx (${u.F}/${u.L})`;
+    document.getElementById("th-wy").textContent = `wy (${u.F}/${u.L})`;
+}
+
+function cambiarSistemaUnidades() {
+    sincronizarDesdeTablas();
+    actualizarEncabezadosUnidades();
+    dibujarPlano();
+}
+
+function renderizarTablas() {
+    // 1. Nodos
+    const tbN = document.querySelector("#tabla-nodos tbody");
+    tbN.innerHTML = "";
+    nodosData.forEach((n, idx) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td><input type="number" step="1" value="${n[0]}" onchange="actualizarCampo(nodosData, ${idx}, 0, parseInt(this.value))"></td>
+            <td><input type="number" step="any" value="${n[1]}" onchange="actualizarCampo(nodosData, ${idx}, 1, parseFloat(this.value))"></td>
+            <td><input type="number" step="any" value="${n[2]}" onchange="actualizarCampo(nodosData, ${idx}, 2, parseFloat(this.value))"></td>
+            <td><input type="checkbox" ${n[3] ? "checked" : ""} onchange="actualizarCampo(nodosData, ${idx}, 3, this.checked)"></td>
+            <td><input type="checkbox" ${n[4] ? "checked" : ""} onchange="actualizarCampo(nodosData, ${idx}, 4, this.checked)"></td>
+            <td><input type="number" step="any" value="${n[5] || 0}" onchange="actualizarCampo(nodosData, ${idx}, 5, parseFloat(this.value))"></td>
+            <td><button class="btn-del-row" title="Eliminar" onclick="eliminarFilaNodos(${idx})">✕</button></td>
+        `;
+        tbN.appendChild(tr);
+    });
+
+    // 2. Elementos
+    const tbE = document.querySelector("#tabla-elementos tbody");
+    tbE.innerHTML = "";
+    elementosData.forEach((el, idx) => {
+        tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td><input type="number" step="1" value="${el[0]}" onchange="actualizarCampo(elementosData, ${idx}, 0, parseInt(this.value))"></td>
+            <td><input type="number" step="1" value="${el[1]}" onchange="actualizarCampo(elementosData, ${idx}, 1, parseInt(this.value))"></td>
+            <td><input type="number" step="1" value="${el[2]}" onchange="actualizarCampo(elementosData, ${idx}, 2, parseInt(this.value))"></td>
+            <td><input type="number" step="any" value="${el[3]}" onchange="actualizarCampo(elementosData, ${idx}, 3, parseFloat(this.value))"></td>
+            <td><input type="number" step="any" value="${el[4]}" onchange="actualizarCampo(elementosData, ${idx}, 4, parseFloat(this.value))"></td>
+            <td><input type="checkbox" ${el[5] ? "checked" : ""} onchange="actualizarCampo(elementosData, ${idx}, 5, this.checked)"></td>
+            <td><button class="btn-del-row" title="Eliminar" onclick="eliminarFilaElementos(${idx})">✕</button></td>
+        `;
+        tbE.appendChild(tr);
+    });
+
+    // 3. Cargas Nodales
+    const tbCN = document.querySelector("#tabla-cn tbody");
+    tbCN.innerHTML = "";
+    cargasNodalesData.forEach((cn, idx) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td><input type="number" step="1" value="${cn[0]}" onchange="actualizarCampo(cargasNodalesData, ${idx}, 0, parseInt(this.value))"></td>
+            <td><input type="number" step="any" value="${cn[1]}" onchange="actualizarCampo(cargasNodalesData, ${idx}, 1, parseFloat(this.value))"></td>
+            <td><input type="number" step="any" value="${cn[2]}" onchange="actualizarCampo(cargasNodalesData, ${idx}, 2, parseFloat(this.value))"></td>
+            <td><button class="btn-del-row" title="Eliminar" onclick="eliminarFilaCN(${idx})">✕</button></td>
+        `;
+        tbCN.appendChild(tr);
+    });
+
+    // 4. Cargas Distribuidas
+    const tbCD = document.querySelector("#tabla-cd tbody");
+    tbCD.innerHTML = "";
+    cargasDistData.forEach((cd, idx) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td><input type="number" step="1" value="${cd[0]}" onchange="actualizarCampo(cargasDistData, ${idx}, 0, parseInt(this.value))"></td>
+            <td><input type="number" step="any" value="${cd[1]}" onchange="actualizarCampo(cargasDistData, ${idx}, 1, parseFloat(this.value))"></td>
+            <td><input type="number" step="any" value="${cd[2]}" onchange="actualizarCampo(cargasDistData, ${idx}, 2, parseFloat(this.value))"></td>
+            <td><button class="btn-del-row" title="Eliminar" onclick="eliminarFilaCD(${idx})">✕</button></td>
+        `;
+        tbCD.appendChild(tr);
+    });
+}
+
+function actualizarCampo(arr, idx, col, val) {
+    if (typeof val === "number" && Number.isNaN(val)) val = 0;
+    arr[idx][col] = val;
+    ultimoResultado = null;
+    guardarMemoriaLocal();
+    dibujarPlano();
+}
+
+function sincronizarDesdeTablas() {
+    const leerTabla = (selector, tipos) => {
+        const rows = document.querySelectorAll(`${selector} tbody tr`);
+        const res = [];
+        rows.forEach(tr => {
+            const inputs = tr.querySelectorAll("input");
+            const fila = [];
+            tipos.forEach((t, i) => {
+                if (t === "int") fila.push(parseInt(inputs[i].value) || 0);
+                else if (t === "float") fila.push(parseFloat(inputs[i].value) || 0.0);
+                else if (t === "bool") fila.push(inputs[i].checked);
+            });
+            res.push(fila);
+        });
+        return res;
+    };
+    nodosData = leerTabla("#tabla-nodos", ["int", "float", "float", "bool", "bool", "float"]);
+    elementosData = leerTabla("#tabla-elementos", ["int", "int", "int", "float", "float", "bool"]);
+    cargasNodalesData = leerTabla("#tabla-cn", ["int", "float", "float"]);
+    cargasDistData = leerTabla("#tabla-cd", ["int", "float", "float"]);
+}
+
+function agregarNodo() {
+    const nextId = nodosData.reduce((m, r) => Math.max(m, r[0]), -1) + 1;
+    nodosData.push([nextId, 0.0, 0.0, false, false, 0.0]);
+    ultimoResultado = null;
+    renderizarTablas();
+    guardarMemoriaLocal();
+}
+
+function eliminarFilaNodos(idx) {
+    if (nodosData.length <= 1) return;
+    nodosData.splice(idx, 1);
+    ultimoResultado = null;
+    renderizarTablas();
+    guardarMemoriaLocal();
+    dibujarPlano();
+}
+
+function agregarElemento() {
+    const nextId = elementosData.reduce((m, r) => Math.max(m, r[0]), -1) + 1;
+    elementosData.push([nextId, 0, 1, 200.0, 10.0, false]);
+    ultimoResultado = null;
+    renderizarTablas();
+    guardarMemoriaLocal();
+}
+
+function eliminarFilaElementos(idx) {
+    elementosData.splice(idx, 1);
+    ultimoResultado = null;
+    renderizarTablas();
+    guardarMemoriaLocal();
+    dibujarPlano();
+}
+
+function agregarCargaNodal() {
+    cargasNodalesData.push([0, 0.0, -50.0]);
+    ultimoResultado = null;
+    renderizarTablas();
+    guardarMemoriaLocal();
+    dibujarPlano();
+}
+
+function eliminarFilaCN(idx) {
+    cargasNodalesData.splice(idx, 1);
+    ultimoResultado = null;
+    renderizarTablas();
+    guardarMemoriaLocal();
+    dibujarPlano();
+}
+
+function agregarCargaDist() {
+    cargasDistData.push([0, 0.0, -10.0]);
+    ultimoResultado = null;
+    renderizarTablas();
+    guardarMemoriaLocal();
+    dibujarPlano();
+}
+
+function eliminarFilaCD(idx) {
+    cargasDistData.splice(idx, 1);
+    ultimoResultado = null;
+    renderizarTablas();
+    guardarMemoriaLocal();
+    dibujarPlano();
+}
+
+// =========================================================================
+// 4. GENERADOR DE PLANTILLAS PARAMÉTRICAS
+// =========================================================================
+function generarPlantilla() {
+    const Lv = parseFloat(document.getElementById("gen-L").value);
+    const Hv = parseFloat(document.getElementById("gen-H").value);
+    const np = parseInt(document.getElementById("gen-pan").value);
+    const tipo = document.getElementById("combo-plantilla").value;
+
+    if (!(Lv > 0 && Hv > 0 && np >= 1)) {
+        alert("Ingresa valores positivos válidos para L, H y paneles.");
+        return;
+    }
+
+    const dx = Lv / np;
+    nodosData = [];
+    elementosData = [];
+    cargasDistData = [];
+    let ind = 0, ide = 0;
+
+    const r3 = v => Math.round(v * 1000) / 1000;
+
+    if (tipo === "Armadura Warren") {
+        for (let i = 0; i <= np; i++) {
+            nodosData.push([ind++, r3(dx * i), 0.0, i === 0, i === 0 || i === np, 0.0]);
+        }
+        const off = ind;
+        for (let i = 0; i < np; i++) {
+            nodosData.push([ind++, r3(dx * i + dx / 2), Hv, false, false, 0.0]);
+        }
+        for (let i = 0; i < np; i++) {
+            elementosData.push([ide++, i, i + 1, 200.0, 10.0, false]);
+        }
+        for (let i = 0; i < np - 1; i++) {
+            elementosData.push([ide++, off + i, off + i + 1, 200.0, 10.0, false]);
+        }
+        for (let i = 0; i < np; i++) {
+            elementosData.push([ide++, i, off + i, 200.0, 10.0, false]);
+            elementosData.push([ide++, off + i, i + 1, 200.0, 10.0, false]);
+        }
+        cargasNodalesData = [[off + Math.floor(np / 2), 0.0, -50.0]];
+    } else if (["Armadura Pratt", "Armadura Howe", "Armadura Tipo K"].includes(tipo)) {
+        for (let i = 0; i <= np; i++) {
+            nodosData.push([ind++, r3(i * dx), 0.0, i === 0, i === 0 || i === np, 0.0]);
+        }
+        const off = ind;
+        for (let i = 0; i <= np; i++) {
+            nodosData.push([ind++, r3(i * dx), Hv, false, false, 0.0]);
+        }
+        const mn = {};
+        if (tipo === "Armadura Tipo K") {
+            for (let i = 1; i < np; i++) {
+                nodosData.push([ind, r3(i * dx), Hv / 2, false, false, 0.0]);
+                mn[i] = ind++;
+            }
+        }
+        for (let i = 0; i < np; i++) {
+            elementosData.push([ide++, i, i + 1, 200.0, 10.0, false]);
+            elementosData.push([ide++, off + i, off + i + 1, 200.0, 10.0, false]);
+        }
+        if (tipo === "Armadura Pratt" || tipo === "Armadura Howe") {
+            for (let i = 0; i <= np; i++) {
+                elementosData.push([ide++, i, off + i, 200.0, 10.0, false]);
+            }
+            for (let i = 0; i < np; i++) {
+                if (tipo === "Armadura Pratt" && i < np / 2) {
+                    elementosData.push([ide++, off + i, i + 1, 200.0, 10.0, false]);
+                } else if (tipo === "Armadura Pratt" && i > np / 2 - 1) {
+                    elementosData.push([ide++, i, off + i + 1, 200.0, 10.0, false]);
+                } else if (tipo === "Armadura Howe" && i < np / 2) {
+                    elementosData.push([ide++, i, off + i + 1, 200.0, 10.0, false]);
+                } else if (tipo === "Armadura Howe" && i > np / 2 - 1) {
+                    elementosData.push([ide++, off + i, i + 1, 200.0, 10.0, false]);
+                }
+            }
+        } else if (tipo === "Armadura Tipo K") {
+            for (let i = 0; i <= np; i++) {
+                if (i === 0 || i === np) {
+                    elementosData.push([ide++, i, off + i, 200.0, 10.0, false]);
+                } else {
+                    elementosData.push([ide++, i, mn[i], 200.0, 10.0, false]);
+                    elementosData.push([ide++, mn[i], off + i, 200.0, 10.0, false]);
+                }
+            }
+            for (let i = 0; i < np; i++) {
+                if (i < np / 2 && mn[i + 1] !== undefined) {
+                    elementosData.push([ide++, i, mn[i + 1], 200.0, 10.0, false]);
+                    elementosData.push([ide++, off + i, mn[i + 1], 200.0, 10.0, false]);
+                } else if (i >= np / 2 && mn[i] !== undefined) {
+                    elementosData.push([ide++, i + 1, mn[i], 200.0, 10.0, false]);
+                    elementosData.push([ide++, off + i + 1, mn[i], 200.0, 10.0, false]);
+                }
+            }
+        }
+        cargasNodalesData = [[Math.floor(np / 2), 0.0, -50.0]];
+    } else if (tipo === "Ménsula en Voladizo") {
+        for (let i = 0; i <= np; i++) {
+            nodosData.push([ind++, r3(i * dx), 0.0, i === 0, i === 0, 0.0]);
+        }
+        const off = ind;
+        for (let i = 0; i <= np; i++) {
+            nodosData.push([ind++, r3(i * dx), Hv, i === 0, i === 0, 0.0]);
+        }
+        for (let i = 0; i < np; i++) {
+            elementosData.push([ide++, i, i + 1, 200.0, 10.0, false]);
+            elementosData.push([ide++, off + i, off + i + 1, 200.0, 10.0, false]);
+            elementosData.push([ide++, i, off + i, 200.0, 10.0, false]);
+            elementosData.push([ide++, i, off + i + 1, 200.0, 10.0, false]);
+        }
+        elementosData.push([ide++, np, off + np, 200.0, 10.0, false]);
+        cargasNodalesData = [[np, 0.0, -50.0]];
+    }
+
+    ultimoResultado = null;
+    renderizarTablas();
+    guardarMemoriaLocal();
+    ajustarVista();
+}
+
+// =========================================================================
+// 5. MOTOR MATEMÁTICO: MÉTODO DE RIGIDEZ DIRECTA 2D + CABLES + APOYOS INCLINADOS
+// =========================================================================
+class Nodo {
+    constructor(id, x, y, angulo = 0.0, idx = 0) {
+        this.id = id;
+        this.x = x;
+        this.y = y;
+        this.angulo = angulo;
+        this.dof_x = idx * 2;
+        this.dof_y = idx * 2 + 1;
+    }
+}
+
+class ElementoArmadura {
+    constructor(id, ni, nj, E, A, es_cable = false) {
+        this.id = id;
+        this.ni = ni;
+        this.nj = nj;
+        this.E = E;
+        this.A = A;
+        this.es_cable = es_cable;
+        this.activo = true;
+        this.L = 0;
+        this.c = 0;
+        this.s = 0;
+    }
+
+    calcularMatrizLocal() {
+        if (!this.activo) {
+            return Array.from({ length: 4 }, () => [0, 0, 0, 0]);
+        }
+        const dx = this.nj.x - this.ni.x;
+        const dy = this.nj.y - this.ni.y;
+        this.L = Math.hypot(dx, dy);
+        this.c = this.L !== 0 ? dx / this.L : 0;
+        this.s = this.L !== 0 ? dy / this.L : 0;
+        const k_axial = this.L !== 0 ? (this.E * this.A) / this.L : 0;
+        const c = this.c, s = this.s;
+        return [
+            [ k_axial * c * c,  k_axial * c * s, -k_axial * c * c, -k_axial * c * s ],
+            [ k_axial * c * s,  k_axial * s * s, -k_axial * c * s, -k_axial * s * s ],
+            [-k_axial * c * c, -k_axial * c * s,  k_axial * c * c,  k_axial * c * s ],
+            [-k_axial * c * s, -k_axial * s * s,  k_axial * c * s,  k_axial * s * s ]
+        ];
+    }
+}
+
+function matMul(A, B) {
+    const n = A.length, m = B[0].length, p = B.length;
+    const C = Array.from({ length: n }, () => new Float64Array(m));
+    for (let i = 0; i < n; i++) {
+        for (let k = 0; k < p; k++) {
+            const aik = A[i][k];
+            if (aik === 0) continue;
+            for (let j = 0; j < m; j++) {
+                C[i][j] += aik * B[k][j];
+            }
+        }
+    }
+    return C;
+}
+
+function transpose(A) {
+    const n = A.length, m = A[0].length;
+    const T = Array.from({ length: m }, () => new Float64Array(n));
+    for (let i = 0; i < n; i++) {
+        for (let j = 0; j < m; j++) T[j][i] = A[i][j];
+    }
+    return T;
+}
+
+function matVecMul(A, x) {
+    const n = A.length;
+    const y = new Float64Array(n);
+    for (let i = 0; i < n; i++) {
+        let sum = 0;
+        for (let j = 0; j < x.length; j++) sum += A[i][j] * x[j];
+        y[i] = sum;
+    }
+    return y;
+}
+
+function solveLinearSystem(A_in, b_in) {
+    const n = b_in.length;
+    const A = A_in.map(row => Float64Array.from(row));
+    const b = Float64Array.from(b_in);
+
+    for (let k = 0; k < n; k++) {
+        let maxRow = k;
+        let maxVal = Math.abs(A[k][k]);
+        for (let i = k + 1; i < n; i++) {
+            if (Math.abs(A[i][k]) > maxVal) {
+                maxVal = Math.abs(A[i][k]);
+                maxRow = i;
+            }
+        }
+        if (maxVal < 1e-12) return null; // Singular / inestable
+
+        if (maxRow !== k) {
+            [A[k], A[maxRow]] = [A[maxRow], A[k]];
+            [b[k], b[maxRow]] = [b[maxRow], b[k]];
+        }
+
+        for (let i = k + 1; i < n; i++) {
+            const factor = A[i][k] / A[k][k];
+            for (let j = k + 1; j < n; j++) {
+                A[i][j] -= factor * A[k][j];
+            }
+            b[i] -= factor * b[k];
+        }
+    }
+
+    const x = new Float64Array(n);
+    for (let i = n - 1; i >= 0; i--) {
+        let sum = b[i];
+        for (let j = i + 1; j < n; j++) {
+            sum -= A[i][j] * x[j];
+        }
+        x[i] = sum / A[i][i];
+    }
+    return x;
+}
+
+class Armadura2D {
+    constructor() {
+        this.nodos = new Map();
+        this.elementos = [];
+        this.fuerzas = new Map();
+        this.restricciones = new Set();
+    }
+
+    resolver() {
+        if (this.nodos.size === 0) return null;
+        this.elementos.forEach(e => e.activo = true);
+
+        const N_dof = this.nodos.size * 2;
+        const F_global = new Float64Array(N_dof);
+        for (const [dof, mag] of this.fuerzas.entries()) {
+            F_global[dof] += mag;
+        }
+
+        // Matriz de transformación T para apoyos inclinados
+        const T = Array.from({ length: N_dof }, (_, i) => {
+            const row = new Float64Array(N_dof);
+            row[i] = 1.0;
+            return row;
+        });
+
+        for (const nodo of this.nodos.values()) {
+            if (nodo.angulo !== 0.0) {
+                const rad = (nodo.angulo * Math.PI) / 180.0;
+                const c = Math.cos(rad), s = Math.sin(rad);
+                const i = nodo.dof_x, j = nodo.dof_y;
+                T[i][i] = c;  T[i][j] = s;
+                T[j][i] = -s; T[j][j] = c;
+            }
+        }
+
+        const dofs_libres = [];
+        for (let i = 0; i < N_dof; i++) {
+            if (!this.restricciones.has(i)) dofs_libres.push(i);
+        }
+        if (dofs_libres.length === 0) return null;
+
+        let U_global = null;
+        let K_global = null;
+        const T_T = transpose(T);
+
+        for (let iter = 0; iter < 10; iter++) {
+            K_global = Array.from({ length: N_dof }, () => new Float64Array(N_dof));
+            for (const elem of this.elementos) {
+                const k_local = elem.calcularMatrizLocal();
+                const indices = [elem.ni.dof_x, elem.ni.dof_y, elem.nj.dof_x, elem.nj.dof_y];
+                for (let i = 0; i < 4; i++) {
+                    for (let j = 0; j < 4; j++) {
+                        K_global[indices[i]][indices[j]] += k_local[i][j];
+                    }
+                }
+            }
+
+            const K_rot = matMul(matMul(T, K_global), T_T);
+            const F_rot = matVecMul(T, F_global);
+
+            const K_red = dofs_libres.map(r => dofs_libres.map(c => K_rot[r][c]));
+            const F_red = dofs_libres.map(r => F_rot[r]);
+
+            const U_red = solveLinearSystem(K_red, F_red);
+            if (!U_red) return null;
+
+            const U_local = new Float64Array(N_dof);
+            dofs_libres.forEach((dof, i) => U_local[dof] = U_red[i]);
+            U_global = matVecMul(T_T, U_local);
+
+            let nueva_inactivacion = false;
+            for (const elem of this.elementos) {
+                if (elem.es_cable && elem.activo) {
+                    const dx_i = U_global[elem.ni.dof_x], dy_i = U_global[elem.ni.dof_y];
+                    const dx_j = U_global[elem.nj.dof_x], dy_j = U_global[elem.nj.dof_y];
+                    const f_N = (elem.E * elem.A / elem.L) * (-elem.c * dx_i - elem.s * dy_i + elem.c * dx_j + elem.s * dy_j);
+                    if (f_N < -1e-4) {
+                        elem.activo = false;
+                        nueva_inactivacion = true;
+                    }
+                }
+            }
+            if (!nueva_inactivacion) break;
+        }
+
+        const KU = matVecMul(K_global, U_global);
+        const R_global = new Float64Array(N_dof);
+        for (let i = 0; i < N_dof; i++) R_global[i] = KU[i] - F_global[i];
+
+        return { U: U_global, R: R_global, K: K_global };
+    }
+}
+
+// =========================================================================
+// 6. EJECUCIÓN DEL ANÁLISIS, REPORTE Y ECUACIONES LATEX
+// =========================================================================
+function ejecutarAnalisis() {
+    sincronizarDesdeTablas();
+    guardarMemoriaLocal();
+
+    const u = getUnidadActual();
+    const estructura = new Armadura2D();
+
+    nodosData.forEach((r, idx) => {
+        const nid = parseInt(r[0]);
+        const nodo = new Nodo(nid, parseFloat(r[1]), parseFloat(r[2]), parseFloat(r[5] || 0), idx);
+        estructura.nodos.set(nid, nodo);
+        if (r[3]) estructura.restricciones.add(nodo.dof_x);
+        if (r[4]) estructura.restricciones.add(nodo.dof_y);
+    });
+
+    elementosData.forEach(r => {
+        const ni = estructura.nodos.get(parseInt(r[1]));
+        const nj = estructura.nodos.get(parseInt(r[2]));
+        if (ni && nj) {
+            estructura.elementos.push(new ElementoArmadura(
+                parseInt(r[0]),
+                ni, nj,
+                parseFloat(r[3]) * u.E_mult,
+                parseFloat(r[4]) * u.A_mult,
+                Boolean(r[5])
+            ));
+        }
+    });
+
+    const f_nodales_desglose = new Map();
+    for (const nid of estructura.nodos.keys()) f_nodales_desglose.set(nid, [0.0, 0.0]);
+
+    cargasNodalesData.forEach(cn => {
+        const nid = parseInt(cn[0]);
+        const nodo = estructura.nodos.get(nid);
+        if (nodo) {
+            const fx = parseFloat(cn[1]) * u.F_mult;
+            const fy = parseFloat(cn[2]) * u.F_mult;
+            f_nodales_desglose.get(nid)[0] += fx;
+            f_nodales_desglose.get(nid)[1] += fy;
+            estructura.fuerzas.set(nodo.dof_x, (estructura.fuerzas.get(nodo.dof_x) || 0) + fx);
+            estructura.fuerzas.set(nodo.dof_y, (estructura.fuerzas.get(nodo.dof_y) || 0) + fy);
+        }
+    });
+
+    cargasDistData.forEach(cd => {
+        const eid = parseInt(cd[0]);
+        const e = estructura.elementos.find(el => el.id === eid);
+        if (e) {
+            const L_geom = Math.hypot(e.nj.x - e.ni.x, e.nj.y - e.ni.y);
+            const Wx = parseFloat(cd[1]) * L_geom * u.F_mult;
+            const Wy = parseFloat(cd[2]) * L_geom * u.F_mult;
+            f_nodales_desglose.get(e.ni.id)[0] += Wx / 2.0;
+            f_nodales_desglose.get(e.nj.id)[0] += Wx / 2.0;
+            f_nodales_desglose.get(e.ni.id)[1] += Wy / 2.0;
+            f_nodales_desglose.get(e.nj.id)[1] += Wy / 2.0;
+            estructura.fuerzas.set(e.ni.dof_x, (estructura.fuerzas.get(e.ni.dof_x) || 0) + Wx / 2.0);
+            estructura.fuerzas.set(e.nj.dof_x, (estructura.fuerzas.get(e.nj.dof_x) || 0) + Wx / 2.0);
+            estructura.fuerzas.set(e.ni.dof_y, (estructura.fuerzas.get(e.ni.dof_y) || 0) + Wy / 2.0);
+            estructura.fuerzas.set(e.nj.dof_y, (estructura.fuerzas.get(e.nj.dof_y) || 0) + Wy / 2.0);
+        }
+    });
+
+    const sol = estructura.resolver();
+    if (!sol) {
+        alert("⚠️ Mecanismo inestable o mal restringido.\nVerifica que haya al menos 3 restricciones no concurrentes/paralelas y que todas las barras conecten nodos válidos.");
+        return;
+    }
+
+    ultimoResultado = { U: sol.U, R: sol.R, estructura, u };
+
+    generarReporteTexto(sol.U, sol.R, estructura, u);
+    generarTeoriaLatex(sol.U, sol.R, estructura, f_nodales_desglose, u);
+    dibujarPlano();
+}
+
+function generarReporteTexto(U, R, estructura, u) {
+    let rep = `=== 1. REACCIONES EN APOYOS (${u.F.toUpperCase()}) ===\n`;
+    for (const [nid, n] of estructura.nodos.entries()) {
+        if (estructura.restricciones.has(n.dof_x) || estructura.restricciones.has(n.dof_y)) {
+            const rx_g = R[n.dof_x] / u.F_mult;
+            const ry_g = R[n.dof_y] / u.F_mult;
+            let linea = `📍 Nodo N${nid}: Globales [Rx = ${rx_g.toFixed(4)}, Ry = ${ry_g.toFixed(4)}]`;
+            if (n.angulo !== 0.0) {
+                const rad = (n.angulo * Math.PI) / 180.0;
+                const c = Math.cos(rad), s = Math.sin(rad);
+                const r_tan = rx_g * c + ry_g * s;
+                const r_nor = -rx_g * s + ry_g * c;
+                linea += ` | Locales ∠${n.angulo}° [R_tan = ${r_tan.toFixed(4)}, R_nor = ${r_nor.toFixed(4)}]`;
+            }
+            rep += linea + "\n";
+        }
+    }
+
+    rep += `\n=== 2. ESFUERZOS INTERNOS Y COMPONENTES (${u.F.toUpperCase()}) ===\n`;
+    for (const e of estructura.elementos) {
+        const pref = e.es_cable ? "C" : "B";
+        if (!e.activo) {
+            rep += `⚠️ ${pref}${e.id} (N${e.ni.id}-N${e.nj.id}): 0.0000  -->  〰 CABLE AFLAMBADO\n`;
+            continue;
+        }
+        const f_N = (e.E * e.A / e.L) * (-e.c * U[e.ni.dof_x] - e.s * U[e.ni.dof_y] + e.c * U[e.nj.dof_x] + e.s * U[e.nj.dof_y]);
+        const f_ui = f_N / u.F_mult;
+        const estado = f_ui > 1e-4 ? "🟢 TENSIÓN (+)" : (f_ui < -1e-4 ? "🔴 COMPR. (-)" : "⚪ CERO");
+        rep += `${pref}${e.id} (N${e.ni.id}-N${e.nj.id}): ${Math.abs(f_ui).toFixed(4)} ${u.F}  --> ${estado}\n`;
+        rep += `     ↳ Comp. Rectangulares: Fx = ${Math.abs(f_ui * e.c).toFixed(4)}  |  Fy = ${Math.abs(f_ui * e.s).toFixed(4)}\n`;
+    }
+
+    rep += `\n=== 3. DESPLAZAMIENTOS NODALES (${u.U_out.toUpperCase()}) ===\n`;
+    for (const [nid, n] of estructura.nodos.entries()) {
+        const ux = U[n.dof_x] * u.U_mult;
+        const uy = U[n.dof_y] * u.U_mult;
+        rep += `• N${nid}: Δx = ${ux.toExponential(4)} ${u.U_out}  |  Δy = ${uy.toExponential(4)} ${u.U_out}\n`;
+    }
+
+    document.getElementById("txt-reporte").textContent = rep;
+}
+
+function fmtDistFraccion(val) {
+    const val_abs = Math.abs(val);
+    let bestNum = Math.round(val_abs), bestDen = 1, bestErr = Math.abs(val_abs - bestNum);
+    for (let d = 2; d <= 16; d++) {
+        const n = Math.round(val_abs * d);
+        const err = Math.abs(val_abs - n / d);
+        if (err < bestErr && err < 1e-4) {
+            bestNum = n;
+            bestDen = d;
+            bestErr = err;
+        }
+    }
+    if (bestDen === 1) return `${bestNum}`;
+    if (bestErr < 1e-4) return `\\frac{${bestNum}}{${bestDen}}`;
+    return val_abs.toPrecision(3);
+}
+
+function generarTeoriaLatex(U, R, estructura, f_nodales_desglose, u) {
+    let nodo_ref = null;
+    for (const n of estructura.nodos.values()) {
+        if (estructura.restricciones.has(n.dof_x) && estructura.restricciones.has(n.dof_y)) {
+            nodo_ref = n;
+            break;
+        }
+    }
+    if (!nodo_ref) {
+        let minD = Infinity;
+        for (const n of estructura.nodos.values()) {
+            const d = Math.hypot(n.x, n.y);
+            if (d < minD) { minD = d; nodo_ref = n; }
+        }
+    }
+    const ref_id = nodo_ref.id;
+    const eq_fx = [], eq_fy = [], eq_m = [];
+    let reacciones_html = `<div style="color:#9aa5b4; font-weight:700; margin-top:6px;">➤ Reacciones despejadas en los apoyos:</div>`;
+
+    for (const [nid, n] of estructura.nodos.entries()) {
+        const dx = n.x - nodo_ref.x, dy = n.y - nodo_ref.y;
+        const fx_ap = f_nodales_desglose.get(nid)[0] / u.F_mult;
+        const fy_ap = f_nodales_desglose.get(nid)[1] / u.F_mult;
+
+        if (Math.abs(fx_ap) > 1e-4) {
+            eq_fx.push(`${fx_ap >= 0 ? "+" : ""}${fx_ap.toFixed(2)}`);
+            const m_x = -fx_ap * dy;
+            if (Math.abs(m_x) > 1e-4) {
+                const signo = m_x > 0 ? "+" : "-";
+                eq_m.push(`${signo} (${Math.abs(fx_ap).toFixed(2)} \\text{ ${u.F}}) \\cdot (${fmtDistFraccion(dy)} \\text{ ${u.L}})_{F_{x${nid}}}`);
+            }
+        }
+        if (Math.abs(fy_ap) > 1e-4) {
+            eq_fy.push(`${fy_ap >= 0 ? "+" : ""}${fy_ap.toFixed(2)}`);
+            const m_y = fy_ap * dx;
+            if (Math.abs(m_y) > 1e-4) {
+                const signo = m_y > 0 ? "+" : "-";
+                eq_m.push(`${signo} (${Math.abs(fy_ap).toFixed(2)} \\text{ ${u.F}}) \\cdot (${fmtDistFraccion(dx)} \\text{ ${u.L}})_{F_{y${nid}}}`);
+            }
+        }
+
+        const is_lx = estructura.restricciones.has(n.dof_x);
+        const is_ly = estructura.restricciones.has(n.dof_y);
+        const c_ang = Math.cos((n.angulo * Math.PI) / 180.0);
+        const s_ang = Math.sin((n.angulo * Math.PI) / 180.0);
+
+        const has_rx = (is_lx && Math.abs(c_ang) > 1e-4) || (is_ly && Math.abs(s_ang) > 1e-4);
+        const has_ry = (is_lx && Math.abs(s_ang) > 1e-4) || (is_ly && Math.abs(c_ang) > 1e-4);
+
+        if (has_rx) {
+            eq_fx.push(`+ R_{${nid}x}`);
+            if (nid !== ref_id && Math.abs(dy) > 1e-4) {
+                const signo = (-dy) > 0 ? "+" : "-";
+                eq_m.push(`${signo} R_{${nid}x} \\cdot (${fmtDistFraccion(dy)} \\text{ ${u.L}})`);
+            }
+        }
+        if (has_ry) {
+            eq_fy.push(`+ R_{${nid}y}`);
+            if (nid !== ref_id && Math.abs(dx) > 1e-4) {
+                const signo = dx > 0 ? "+" : "-";
+                eq_m.push(`${signo} R_{${nid}y} \\cdot (${fmtDistFraccion(dx)} \\text{ ${u.L}})`);
+            }
+        }
+
+        const rx = R[n.dof_x] / u.F_mult, ry = R[n.dof_y] / u.F_mult;
+        if (has_rx || Math.abs(rx) > 1e-4) reacciones_html += `$$ R_{${nid}x} = ${rx.toFixed(2)} \\text{ ${u.F}} $$`;
+        if (has_ry || Math.abs(ry) > 1e-4) reacciones_html += `$$ R_{${nid}y} = ${ry.toFixed(2)} \\text{ ${u.F}} $$`;
+    }
+
+    const formatEq = list => {
+        let s = list.join(" ").replace(/\+ -/g, "- ").trim();
+        if (s.startsWith("+")) s = s.slice(1).trim();
+        return s || "0";
+    };
+
+    let html = `
+        <h3>1. Cálculo de Reacciones Externas (Equilibrio Global)</h3>
+        <div class="nodo-block">
+            $$ \\sum F_x = ${formatEq(eq_fx)} = 0 $$
+            $$ \\sum F_y = ${formatEq(eq_fy)} = 0 $$
+            $$ \\sum M_{N${ref_id}} = ${formatEq(eq_m)} = 0 $$
+            <hr style="border-color:#383e4a; margin:8px 0;">
+            ${reacciones_html}
+        </div>
+        <h3>2. Desglose por Nodo (Método de Nodos)</h3>
+    `;
+
+    for (const [nid, n] of estructura.nodos.entries()) {
+        const fx_n = f_nodales_desglose.get(nid)[0];
+        const fy_n = f_nodales_desglose.get(nid)[1];
+        const rx = R[n.dof_x], ry = R[n.dof_y];
+
+        const eq_x = [], eq_y = [], incognitas = [];
+        if (Math.abs(fx_n) > 1e-4) eq_x.push(`${(fx_n / u.F_mult).toFixed(2)}`);
+        if (Math.abs(rx) > 1e-4) eq_x.push(`R_{${nid}x}`);
+        if (Math.abs(fy_n) > 1e-4) eq_y.push(`${(fy_n / u.F_mult).toFixed(2)}`);
+        if (Math.abs(ry) > 1e-4) eq_y.push(`R_{${nid}y}`);
+
+        for (const e of estructura.elementos) {
+            if (!e.activo) continue;
+            const f_N = (e.E * e.A / e.L) * (-e.c * U[e.ni.dof_x] - e.s * U[e.ni.dof_y] + e.c * U[e.nj.dof_x] + e.s * U[e.nj.dof_y]);
+            const f_disp = f_N / u.F_mult;
+            const estado = f_disp > 1e-4 ? " \\text{ (T)}" : (f_disp < -1e-4 ? " \\text{ (C)}" : "");
+
+            if (e.ni.id === nid) {
+                eq_x.push(`F_{B${e.id}}(${e.c.toFixed(3)})`);
+                eq_y.push(`F_{B${e.id}}(${e.s.toFixed(3)})`);
+                incognitas.push(`F_{B${e.id}} = ${Math.abs(f_disp).toFixed(2)} \\text{ ${u.F}}${estado}`);
+            } else if (e.nj.id === nid) {
+                eq_x.push(`F_{B${e.id}}(${(-e.c).toFixed(3)})`);
+                eq_y.push(`F_{B${e.id}}(${(-e.s).toFixed(3)})`);
+                incognitas.push(`F_{B${e.id}} = ${Math.abs(f_disp).toFixed(2)} \\text{ ${u.F}}${estado}`);
+            }
+        }
+
+        const str_x = eq_x.length ? eq_x.join(" + ").replace(/\+ -/g, "- ") : "0";
+        const str_y = eq_y.length ? eq_y.join(" + ").replace(/\+ -/g, "- ") : "0";
+        const str_inc = incognitas.length ? incognitas.map(i => `$$ ${i} $$`).join("") : `$$ \\text{Sin barras activas} $$`;
+
+        html += `
+            <div class="nodo-block">
+                <strong>Nodo N${nid}:</strong>
+                $$ \\sum F_x = ${str_x} = 0 $$
+                $$ \\sum F_y = ${str_y} = 0 $$
+                <span style="color:#2ecc71; font-weight:700; font-size:0.82rem;">➤ Magnitud de barras conectadas:</span>
+                ${str_inc}
+            </div>
+        `;
+    }
+
+    const cont = document.getElementById("txt-didactico");
+    cont.innerHTML = html;
+    if (window.MathJax && window.MathJax.typesetPromise) {
+        MathJax.typesetPromise([cont]).catch(err => console.warn(err));
+    }
+}
+
+// =========================================================================
+// 7. ANÁLISIS TRIDIMENSIONAL DE POISSON (Δ VOLUMEN)
+// =========================================================================
+function abrirModalPoisson() {
+    if (!ultimoResultado) {
+        alert("Primero debes presionar ⚙️ CALCULAR para resolver la estructura.");
+        return;
+    }
+    const sel = document.getElementById("poisson-barra");
+    sel.innerHTML = "";
+    ultimoResultado.estructura.elementos.forEach(e => {
+        if (e.activo) {
+            const opt = document.createElement("option");
+            opt.value = e.id;
+            opt.textContent = `Barra ${e.id} (N${e.ni.id} - N${e.nj.id})`;
+            sel.appendChild(opt);
+        }
+    });
+    if (sel.options.length === 0) {
+        alert("No hay barras activas en la estructura.");
+        return;
+    }
+    const u = ultimoResultado.u;
+    document.getElementById("lbl-poisson-E").textContent = `Nuevo Módulo E (${u.E}) [Opcional]:`;
+    document.getElementById("lbl-poisson-D").textContent = `Nuevo Diámetro (${u.D_in}) [Opcional]:`;
+    document.getElementById("poisson-E").value = "";
+    document.getElementById("poisson-D").value = "";
+    document.getElementById("poisson-resultado").style.display = "none";
+    actualizarInfoBarraPoisson();
+    document.getElementById("modal-poisson").classList.add("open");
+}
+
+function cerrarModalPoisson() {
+    document.getElementById("modal-poisson").classList.remove("open");
+}
+
+function actualizarInfoBarraPoisson() {
+    const barId = parseInt(document.getElementById("poisson-barra").value);
+    const { estructura, u } = ultimoResultado;
+    const e = estructura.elementos.find(el => el.id === barId);
+    if (!e) return;
+
+    const E_user = e.E / u.E_mult;
+    const A_user = e.A / u.A_mult;
+    const D_equiv_si = Math.sqrt((4.0 * e.A) / Math.PI);
+    const D_equiv_user = D_equiv_si / u.D_mult;
+
+    document.getElementById("poisson-info-actual").textContent =
+        `Actual: E = ${E_user.toPrecision(4)} ${u.E} | A = ${A_user.toPrecision(4)} ${u.A} (D equiv: ${D_equiv_user.toPrecision(4)} ${u.D_in})`;
+}
+
+function calcularCambioVolumen() {
+    const barId = parseInt(document.getElementById("poisson-barra").value);
+    const { U, estructura, u } = ultimoResultado;
+    const e = estructura.elementos.find(el => el.id === barId);
+    if (!e) return;
+
+    const nu = parseFloat(document.getElementById("poisson-nu").value);
+    if (Number.isNaN(nu)) {
+        alert("Ingresa un coeficiente de Poisson válido.");
+        return;
+    }
+
+    const txtE = document.getElementById("poisson-E").value.trim();
+    const E_si = txtE ? parseFloat(txtE) * u.E_mult : e.E;
+
+    const txtD = document.getElementById("poisson-D").value.trim();
+    let A_si = e.A;
+    if (txtD) {
+        const D_si = parseFloat(txtD) * u.D_mult;
+        A_si = (Math.PI * D_si * D_si) / 4.0;
+    }
+
+    const dx_i = U[e.ni.dof_x], dy_i = U[e.ni.dof_y];
+    const dx_j = U[e.nj.dof_x], dy_j = U[e.nj.dof_y];
+    const delta_L_orig_si = -e.c * dx_i - e.s * dy_i + e.c * dx_j + e.s * dy_j;
+
+    const L0_si = e.L * u.L_mult;
+    const F_axial_si = (e.E * e.A / L0_si) * delta_L_orig_si;
+
+    const delta_L_nuevo_si = (F_axial_si * L0_si) / (E_si * A_si);
+    const epsilon_x = delta_L_nuevo_si / L0_si;
+
+    const vol_inicial_si = A_si * L0_si;
+    const factor_vol = (1.0 + epsilon_x) * Math.pow(1.0 - nu * epsilon_x, 2) - 1.0;
+    const delta_V_si = vol_inicial_si * factor_vol;
+    const vol_final_si = vol_inicial_si + delta_V_si;
+
+    const E_disp = E_si / u.E_mult;
+    const A_disp = A_si / u.A_mult;
+    const F_disp = F_axial_si / u.F_mult;
+    const dL_disp = delta_L_nuevo_si * u.U_mult;
+
+    const vol_mult = Math.pow(u.D_mult, 3);
+    const unidad_vol = `${u.D_in}³`;
+    const V0_disp = vol_inicial_si / vol_mult;
+    const dV_disp = delta_V_si / vol_mult;
+    const Vf_disp = vol_final_si / vol_mult;
+
+    const estado = F_axial_si > 1e-6 ? "TRACCIÓN (+)" : (F_axial_si < -1e-6 ? "COMPRESIÓN (-)" : "NULA");
+
+    const res =
+`=== Resultados Especiales: Barra ${barId} [${estado}] ===
+• Fuerza Axial Interna (F): ${Math.abs(F_disp).toFixed(4)} ${u.F}
+• Longitud inicial (L0):    ${e.L.toFixed(4)} ${u.L}
+• Módulo Elasticidad (E):   ${E_disp.toPrecision(4)} ${u.E}
+• Área transversal (A0):    ${A_disp.toFixed(6)} ${u.A}
+• Coef. de Poisson (ν):     ${nu.toFixed(4)}
+• Deformación axial (ΔL):   ${dL_disp.toExponential(6)} ${u.U_out}
+• Deformación unitaria (εx):${epsilon_x.toExponential(6)}
+• Volumen original (V0):    ${V0_disp.toFixed(6)} ${unidad_vol}
+• Cambio de Volumen (ΔV):   ${dV_disp.toExponential(6)} ${unidad_vol}
+• Volumen final (Vf):       ${Vf_disp.toFixed(6)} ${unidad_vol}`;
+
+    document.getElementById("poisson-texto").textContent = res;
+    document.getElementById("poisson-resultado").style.display = "block";
+}
+
+// =========================================================================
+// 8. LIENZO CAD INTERACTIVO (DIBUJO, ZOOM, PAN Y HERRAMIENTAS)
+// =========================================================================
+function worldToScreen(wx, wy) {
+    return {
+        x: cam.offsetX + wx * cam.scale,
+        y: cam.offsetY - wy * cam.scale
+    };
+}
+
+function screenToWorld(sx, sy) {
+    return {
+        x: (sx - cam.offsetX) / cam.scale,
+        y: (cam.offsetY - sy) / cam.scale
+    };
+}
+
+function ajustarVista() {
+    const container = document.getElementById("canvas-container");
+    const w = container.clientWidth || 600;
+    const h = container.clientHeight || 400;
+
+    let xs = nodosData.map(n => parseFloat(n[1]));
+    let ys = nodosData.map(n => parseFloat(n[2]));
+    if (imgExtent) {
+        xs.push(imgExtent[0], imgExtent[1]);
+        ys.push(imgExtent[2], imgExtent[3]);
+    }
+    if (xs.length === 0) return;
+
+    const minX = Math.min(...xs), maxX = Math.max(...xs);
+    const minY = Math.min(...ys), maxY = Math.max(...ys);
+    const spanX = Math.max(maxX - minX, 2);
+    const spanY = Math.max(maxY - minY, 2);
+
+    const pad = 75;
+    cam.scale = Math.min((w - 2 * pad) / spanX, (h - 2 * pad) / spanY);
+    const midX = (minX + maxX) / 2;
+    const midY = (minY + maxY) / 2;
+    cam.offsetX = w / 2 - midX * cam.scale;
+    cam.offsetY = h / 2 + midY * cam.scale;
+    dibujarPlano();
+}
+
+function seleccionarHerramienta(tool, btn) {
+    herramientaActiva = tool;
+    nodoSelBarra = null;
+    document.querySelectorAll(".cad-tool").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    const canvas = document.getElementById("lienzo");
+    canvas.style.cursor = tool === "pan" ? "grab" : "crosshair";
+}
+
+function onCambioEscala() {
+    const val = parseInt(document.getElementById("slider-escala").value);
+    document.getElementById("lbl-escala").textContent = (val / 10).toFixed(1) + "x";
+    dibujarPlano();
+}
+
+function cargarImagenFondo(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+            const u = getUnidadActual();
+            const anchoStr = prompt(`Ancho total de la estructura en la foto (${u.L}):`, "12.0");
+            const w = parseFloat(anchoStr);
+            if (w > 0) {
+                const ratio = img.height / img.width;
+                imgFondo = img;
+                imgExtent = [0, w, 0, w * ratio];
+                ajustarVista();
+            }
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+    event.target.value = "";
+}
+
+function distPuntoSegmento(px, py, x1, y1, x2, y2) {
+    const l2 = (x2 - x1) ** 2 + (y2 - y1) ** 2;
+    if (l2 === 0) return Math.hypot(px - x1, py - y1);
+    const t = Math.max(0, Math.min(1, ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2));
+    return Math.hypot(px - (x1 + t * (x2 - x1)), py - (y1 + t * (y2 - y1)));
+}
+
+function configurarEventosCanvas(canvas) {
+    canvas.addEventListener("mousemove", (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const sx = e.clientX - rect.left;
+        const sy = e.clientY - rect.top;
+        const w = screenToWorld(sx, sy);
+
+        document.getElementById("hud-coords").textContent =
+            `X: ${w.x.toFixed(2)} | Y: ${w.y.toFixed(2)} | Herramienta: ${herramientaActiva.toUpperCase()}`;
+
+        if (isDragging && herramientaActiva === "pan") {
+            cam.offsetX += sx - dragStart.x;
+            cam.offsetY += sy - dragStart.y;
+            dragStart = { x: sx, y: sy };
+            dibujarPlano();
+        }
+    });
+
+    canvas.addEventListener("mousedown", (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const sx = e.clientX - rect.left;
+        const sy = e.clientY - rect.top;
+
+        if (herramientaActiva === "pan") {
+            isDragging = true;
+            dragStart = { x: sx, y: sy };
+            canvas.style.cursor = "grabbing";
+            return;
+        }
+        manejarClicCAD(sx, sy);
+    });
+
+    window.addEventListener("mouseup", () => {
+        if (isDragging) {
+            isDragging = false;
+            if (herramientaActiva === "pan") {
+                document.getElementById("lienzo").style.cursor = "grab";
+            }
+        }
+    });
+
+    canvas.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        const sx = e.clientX - rect.left;
+        const sy = e.clientY - rect.top;
+        const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+
+        const wBefore = screenToWorld(sx, sy);
+        cam.scale = Math.max(2, Math.min(2000, cam.scale * factor));
+        cam.offsetX = sx - wBefore.x * cam.scale;
+        cam.offsetY = sy + wBefore.y * cam.scale;
+        dibujarPlano();
+    }, { passive: false });
+}
+
+function manejarClicCAD(sx, sy) {
+    sincronizarDesdeTablas();
+    const w = screenToWorld(sx, sy);
+    const x_c = Math.round(w.x * 4) / 4; // snap suave a 0.25
+    const y_c = Math.round(w.y * 4) / 4;
+    const tolPx = 18;
+
+    let nc = null, minDistPx = Infinity;
+    nodosData.forEach(n => {
+        const p = worldToScreen(n[1], n[2]);
+        const d = Math.hypot(p.x - sx, p.y - sy);
+        if (d < tolPx && d < minDistPx) {
+            minDistPx = d;
+            nc = n[0];
+        }
+    });
+
+    let ec = null, minDistBar = Infinity;
+    if (nc === null && herramientaActiva === "carga") {
+        elementosData.forEach(el => {
+            const ni = nodosData.find(n => n[0] === el[1]);
+            const nj = nodosData.find(n => n[0] === el[2]);
+            if (ni && nj) {
+                const p1 = worldToScreen(ni[1], ni[2]);
+                const p2 = worldToScreen(nj[1], nj[2]);
+                const d = distPuntoSegmento(sx, sy, p1.x, p1.y, p2.x, p2.y);
+                if (d < tolPx && d < minDistBar) {
+                    minDistBar = d;
+                    ec = el[0];
+                }
+            }
+        });
+    }
+
+    if (nc === null && ec === null && ["nodo", "fijo", "movil"].includes(herramientaActiva)) {
+        const nid = nodosData.reduce((m, r) => Math.max(m, r[0]), -1) + 1;
+        nodosData.push([nid, x_c, y_c, false, false, 0.0]);
+        if (herramientaActiva !== "nodo") nc = nid;
+    }
+
+    if ((herramientaActiva === "barra" || herramientaActiva === "cable") && nc !== null) {
+        if (nodoSelBarra === null) {
+            nodoSelBarra = nc;
+        } else if (nodoSelBarra !== nc) {
+            const eid = elementosData.reduce((m, r) => Math.max(m, r[0]), -1) + 1;
+            elementosData.push([eid, nodoSelBarra, nc, 200.0, 10.0, herramientaActiva === "cable"]);
+            nodoSelBarra = null;
+        }
+    } else if (herramientaActiva === "fijo" && nc !== null) {
+        const n = nodosData.find(r => r[0] === nc);
+        if (n) { n[3] = true; n[4] = true; }
+    } else if (herramientaActiva === "movil" && nc !== null) {
+        const n = nodosData.find(r => r[0] === nc);
+        if (n) { n[3] = false; n[4] = true; }
+    } else if (herramientaActiva === "carga") {
+        const u = getUnidadActual();
+        if (nc !== null) {
+            const modo = prompt(`Carga en Nodo N${nc}:\nEscribe "1" para Rectangular (Fx, Fy)\nEscribe "2" para Polar (Magnitud, Ángulo°)`, "1");
+            if (modo === "1") {
+                const fx = parseFloat(prompt(`Fuerza Fx en N${nc} (${u.F}):`, "0"));
+                const fy = parseFloat(prompt(`Fuerza Fy en N${nc} (${u.F}):`, "-50"));
+                if (!Number.isNaN(fx) && !Number.isNaN(fy)) cargasNodalesData.push([nc, fx, fy]);
+            } else if (modo === "2") {
+                const mag = parseFloat(prompt(`Magnitud total en N${nc} (${u.F}):`, "50"));
+                const ang = parseFloat(prompt(`Ángulo en grados (-90 = hacia abajo):`, "-90"));
+                if (!Number.isNaN(mag) && !Number.isNaN(ang)) {
+                    const rad = (ang * Math.PI) / 180.0;
+                    cargasNodalesData.push([nc, +(mag * Math.cos(rad)).toFixed(4), +(mag * Math.sin(rad)).toFixed(4)]);
+                }
+            }
+        } else if (ec !== null) {
+            const wy = parseFloat(prompt(`Carga distribuida uniforme Wy en Barra B${ec} (${u.F}/${u.L}):`, "-10"));
+            if (!Number.isNaN(wy)) cargasDistData.push([ec, 0.0, wy]);
+        }
+    }
+
+    ultimoResultado = null;
+    renderizarTablas();
+    guardarMemoriaLocal();
+    dibujarPlano();
+}
+
+function drawArrow(ctx, x1, y1, x2, y2, color, lineWidth = 2.2, dashed = false) {
+    const headLen = 9;
+    const angle = Math.atan2(y2 - y1, x2 - x1);
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = lineWidth;
+    if (dashed) ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.beginPath();
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(x2 - headLen * Math.cos(angle - Math.PI / 6), y2 - headLen * Math.sin(angle - Math.PI / 6));
+    ctx.lineTo(x2 - headLen * Math.cos(angle + Math.PI / 6), y2 - headLen * Math.sin(angle + Math.PI / 6));
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+}
+
+function dibujarPlano() {
+    const canvas = document.getElementById("lienzo");
+    const container = document.getElementById("canvas-container");
+    const W = container.clientWidth;
+    const H = container.clientHeight;
+    const ctx = canvas.getContext("2d");
+
+    ctx.clearRect(0, 0, W, H);
+
+    // 1. Cuadrícula de fondo
+    const stepWorld = cam.scale > 80 ? 0.5 : (cam.scale > 25 ? 1 : (cam.scale > 8 ? 2 : 5));
+    const topLeft = screenToWorld(0, 0);
+    const botRight = screenToWorld(W, H);
+
+    ctx.strokeStyle = "#22262e";
+    ctx.lineWidth = 1;
+    for (let gx = Math.floor(topLeft.x / stepWorld) * stepWorld; gx <= botRight.x; gx += stepWorld) {
+        const sx = worldToScreen(gx, 0).x;
+        ctx.beginPath(); ctx.moveTo(sx, 0); ctx.lineTo(sx, H); ctx.stroke();
+    }
+    for (let gy = Math.floor(botRight.y / stepWorld) * stepWorld; gy <= topLeft.y; gy += stepWorld) {
+        const sy = worldToScreen(0, gy).y;
+        ctx.beginPath(); ctx.moveTo(0, sy); ctx.lineTo(W, sy); ctx.stroke();
+    }
+
+    // Ejes principales X=0, Y=0
+    const origin = worldToScreen(0, 0);
+    ctx.strokeStyle = "#323844";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(0, origin.y); ctx.lineTo(W, origin.y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(origin.x, 0); ctx.lineTo(origin.x, H); ctx.stroke();
+
+    // 2. Imagen de fondo (si existe)
+    if (imgFondo && imgExtent) {
+        const pMin = worldToScreen(imgExtent[0], imgExtent[3]);
+        const pMax = worldToScreen(imgExtent[1], imgExtent[2]);
+        ctx.save();
+        ctx.globalAlpha = 0.45;
+        ctx.drawImage(imgFondo, pMin.x, pMin.y, pMax.x - pMin.x, pMax.y - pMin.y);
+        ctx.restore();
+    }
+
+    const tieneSol = ultimoResultado !== null;
+    const esc = parseInt(document.getElementById("slider-escala").value) / 10.0;
+
+    // 3. Elementos (Barras y Cables)
+    elementosData.forEach(el => {
+        const ni = nodosData.find(n => n[0] === el[1]);
+        const nj = nodosData.find(n => n[0] === el[2]);
+        if (!ni || !nj) return;
+
+        const p1 = worldToScreen(ni[1], ni[2]);
+        const p2 = worldToScreen(nj[1], nj[2]);
+        const esCable = Boolean(el[5]);
+
+        if (!tieneSol) {
+            ctx.save();
+            ctx.strokeStyle = "#3498db";
+            ctx.lineWidth = 2.5;
+            if (esCable) ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+            ctx.restore();
+
+            ctx.fillStyle = "#abb2bf";
+            ctx.font = "bold 11px Consolas, monospace";
+            ctx.fillText(`${esCable ? "C" : "B"}${el[0]}`, (p1.x + p2.x) / 2 + 4, (p1.y + p2.y) / 2 - 4);
+        } else {
+            // Estructura original tenue
+            ctx.save();
+            ctx.strokeStyle = "rgba(150, 160, 175, 0.35)";
+            ctx.lineWidth = 1.2;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+            ctx.restore();
+
+            // Estructura deformada coloreada por esfuerzo
+            const { U, estructura, u } = ultimoResultado;
+            const elemObj = estructura.elementos.find(item => item.id === el[0]);
+            if (!elemObj) return;
+
+            const dx_i = U[elemObj.ni.dof_x], dy_i = U[elemObj.ni.dof_y];
+            const dx_j = U[elemObj.nj.dof_x], dy_j = U[elemObj.nj.dof_y];
+            const pd1 = worldToScreen(elemObj.ni.x + dx_i * esc, elemObj.ni.y + dy_i * esc);
+            const pd2 = worldToScreen(elemObj.nj.x + dx_j * esc, elemObj.nj.y + dy_j * esc);
+
+            const f_N = (elemObj.E * elemObj.A / elemObj.L) * (-elemObj.c * dx_i - elemObj.s * dy_i + elemObj.c * dx_j + elemObj.s * dy_j);
+            const f_disp = f_N / u.F_mult;
+            const rel = Math.min(Math.abs(f_disp) / 50.0, 1.0);
+            const grosor = 2.5 + rel * 3.5;
+
+            let color = "#f59e0b";
+            if (!elemObj.activo) color = "#95a5a6";
+            else if (f_N > 1e-4) color = "#3b82f6";
+            else if (f_N < -1e-4) color = "#ef4444";
+
+            ctx.save();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = grosor;
+            if (esCable || !elemObj.activo) ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(pd1.x, pd1.y);
+            ctx.lineTo(pd2.x, pd2.y);
+            ctx.stroke();
+            ctx.restore();
+
+            ctx.fillStyle = color;
+            ctx.font = "bold 11px Consolas, monospace";
+            ctx.fillText(`${esCable ? "C" : "B"}${el[0]}`, (pd1.x + pd2.x) / 2 + 4, (pd1.y + pd2.y) / 2 - 4);
+        }
+    });
+
+    // 4. Cargas distribuidas
+    cargasDistData.forEach(cd => {
+        const el = elementosData.find(item => item[0] === cd[0]);
+        if (!el || (cd[1] === 0 && cd[2] === 0)) return;
+        const ni = nodosData.find(n => n[0] === el[1]);
+        const nj = nodosData.find(n => n[0] === el[2]);
+        if (!ni || !nj) return;
+
+        let cx = (ni[1] + nj[1]) / 2, cy = (ni[2] + nj[2]) / 2;
+        if (tieneSol) {
+            const { U, estructura } = ultimoResultado;
+            const eObj = estructura.elementos.find(item => item.id === el[0]);
+            if (eObj) {
+                cx = (eObj.ni.x + U[eObj.ni.dof_x] * esc + eObj.nj.x + U[eObj.nj.dof_x] * esc) / 2;
+                cy = (eObj.ni.y + U[eObj.ni.dof_y] * esc + eObj.nj.y + U[eObj.nj.dof_y] * esc) / 2;
+            }
+        }
+        const pc = worldToScreen(cx, cy);
+        const mag = Math.hypot(cd[1], cd[2]);
+        const ux = cd[1] / mag, uy = cd[2] / mag;
+        drawArrow(ctx, pc.x - ux * 32, pc.y + uy * 32, pc.x, pc.y, "#f39c12", 2, true);
+        ctx.fillStyle = "#f39c12";
+        ctx.font = "bold 10px Consolas, monospace";
+        ctx.fillText(`w=${mag.toFixed(1)}`, pc.x + 6, pc.y - 12);
+    });
+
+    // 5. Nodos y Apoyos
+    nodosData.forEach(n => {
+        let wx = n[1], wy = n[2];
+        if (tieneSol) {
+            const nObj = ultimoResultado.estructura.nodos.get(n[0]);
+            if (nObj) {
+                wx += ultimoResultado.U[nObj.dof_x] * esc;
+                wy += ultimoResultado.U[nObj.dof_y] * esc;
+            }
+        }
+        const p = worldToScreen(wx, wy);
+        const ang = parseFloat(n[5] || 0);
+        const fx = Boolean(n[3]), fy = Boolean(n[4]);
+
+        if (fx || fy) {
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate((-ang * Math.PI) / 180.0);
+
+            // Línea de piso
+            ctx.strokeStyle = ang !== 0 ? "#a855f7" : "#7f8c8d";
+            ctx.lineWidth = 3.5;
+            ctx.beginPath();
+            ctx.moveTo(-14, 12);
+            ctx.lineTo(14, 12);
+            ctx.stroke();
+
+            if (fx && fy) {
+                // Triángulo fijo
+                ctx.fillStyle = "#27ae60";
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(-10, 11);
+                ctx.lineTo(10, 11);
+                ctx.closePath();
+                ctx.fill();
+            } else {
+                // Rodillo móvil
+                ctx.fillStyle = "#1b1e24";
+                ctx.strokeStyle = "#27ae60";
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.arc(0, 6, 5.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        // Punto del nodo
+        ctx.fillStyle = nodoSelBarra === n[0] ? "#f1c40f" : "#ffffff";
+        ctx.strokeStyle = "#181a1f";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, nodoSelBarra === n[0] ? 6 : 4.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Etiqueta nodo
+        ctx.fillStyle = "#eceff4";
+        ctx.font = "bold 11px Segoe UI, sans-serif";
+        ctx.fillText(`N${n[0]}`, p.x + 7, p.y - 7);
+        if (ang !== 0) {
+            ctx.fillStyle = "#c084fc";
+            ctx.font = "bold 10px Consolas, monospace";
+            ctx.fillText(`∠${ang}°`, p.x - 14, p.y + 24);
+        }
+    });
+
+    // 6. Cargas puntuales nodales
+    cargasNodalesData.forEach(cn => {
+        if (cn[1] === 0 && cn[2] === 0) return;
+        const n = nodosData.find(item => item[0] === cn[0]);
+        if (!n) return;
+        let wx = n[1], wy = n[2];
+        if (tieneSol) {
+            const nObj = ultimoResultado.estructura.nodos.get(n[0]);
+            if (nObj) {
+                wx += ultimoResultado.U[nObj.dof_x] * esc;
+                wy += ultimoResultado.U[nObj.dof_y] * esc;
+            }
+        }
+        const p = worldToScreen(wx, wy);
+        const mag = Math.hypot(cn[1], cn[2]);
+        const ux = cn[1] / mag, uy = cn[2] / mag;
+        const len = 38;
+        drawArrow(ctx, p.x - ux * len, p.y + uy * len, p.x, p.y, "#ef4444", 2.5, false);
+
+        ctx.fillStyle = "#f87171";
+        ctx.font = "bold 11px Consolas, monospace";
+        ctx.fillText(`${mag.toFixed(1)}`, p.x - ux * (len + 14) - 10, p.y + uy * (len + 14));
+    });
+}
+</script>
+</body>
+</html>
